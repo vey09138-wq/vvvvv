@@ -119,7 +119,8 @@
           <div 
             v-for="property in filteredProperties" 
             :key="`property-${property.id}`"
-            class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+            class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+            @click="openPropertyModal(property)"
           >
             <div class="relative h-48 bg-gray-200">
               <img 
@@ -136,7 +137,6 @@
               <div class="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-sm font-medium">
                 Immobilie
               </div>
-              <!-- Image counter if multiple images -->
               <div v-if="property.images && property.images.length > 1" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
                 {{ property.images.length }} Bilder
               </div>
@@ -146,12 +146,12 @@
               <p class="text-gray-600 mb-2">{{ property.type }}</p>
               <p class="text-gray-600 mb-4">📍 {{ property.location }}</p>
               <div class="flex justify-between items-center mb-4">
-                <span class="text-2xl font-bold text-blue-600">{{ property.price }}</span>
-                <span class="text-gray-600">{{ property.size }}</span>
+                <span class="text-2xl font-bold text-blue-600">€{{ property.price }}</span>
+                <span class="text-gray-600">{{ property.size }}m²</span>
               </div>
               <div class="flex justify-between text-sm text-gray-600">
                 <span>🛏️ {{ property.rooms }} Zimmer</span>
-                <span v-if="property.yearBuilt">🏗️ {{ property.yearBuilt }}</span>
+                <span v-if="property.details?.yearBuilt">🏗️ {{ property.details.yearBuilt }}</span>
               </div>
             </div>
           </div>
@@ -160,7 +160,8 @@
           <div 
             v-for="company in filteredCompanies" 
             :key="`company-${company.id}`"
-            class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+            class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+            @click="openCompanyModal(company)"
           >
             <div class="relative h-48 bg-gray-200">
               <img 
@@ -177,7 +178,6 @@
               <div class="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-sm font-medium">
                 Unternehmen
               </div>
-              <!-- Image counter if multiple images -->
               <div v-if="company.images && company.images.length > 1" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
                 {{ company.images.length }} Bilder
               </div>
@@ -196,6 +196,358 @@
         </div>
       </div>
     </div>
+
+    <!-- Property Detail Modal -->
+    <div 
+      v-if="selectedProperty" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      @click="closeModal"
+    >
+      <div 
+        class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+        @click.stop
+      >
+        <!-- Image Gallery -->
+        <div class="relative h-80">
+          <div v-if="selectedProperty.images && selectedProperty.images.length > 0" class="relative h-full">
+            <img 
+              :src="selectedProperty.images[currentImageIndex]" 
+              :alt="selectedProperty.title"
+              class="w-full h-full object-cover"
+            />
+            <!-- Navigation arrows -->
+            <button 
+              v-if="selectedProperty.images.length > 1"
+              @click="previousImage"
+              class="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button 
+              v-if="selectedProperty.images.length > 1"
+              @click="nextImage"
+              class="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <!-- Image counter -->
+            <div v-if="selectedProperty.images.length > 1" class="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+              {{ currentImageIndex + 1 }} / {{ selectedProperty.images.length }}
+            </div>
+          </div>
+          <button 
+            @click="closeModal"
+            class="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div class="p-8">
+          <div class="mb-6">
+            <span class="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium mb-3">
+              {{ selectedProperty.type }}
+            </span>
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ selectedProperty.title }}</h2>
+            <p class="text-gray-600 flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {{ selectedProperty.location }}
+            </p>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div>
+              <h3 class="text-xl font-semibold text-gray-900 mb-4">Details</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Preis:</span>
+                  <span class="font-semibold text-blue-600 text-xl">€{{ selectedProperty.price }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Größe:</span>
+                  <span class="font-medium">{{ selectedProperty.size }}m²</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Zimmer:</span>
+                  <span class="font-medium">{{ selectedProperty.rooms }}</span>
+                </div>
+                <div v-if="selectedProperty.details?.yearBuilt" class="flex justify-between">
+                  <span class="text-gray-600">Baujahr:</span>
+                  <span class="font-medium">{{ selectedProperty.details.yearBuilt }}</span>
+                </div>
+                <div v-if="selectedProperty.details?.condition" class="flex justify-between">
+                  <span class="text-gray-600">Zustand:</span>
+                  <span class="font-medium">{{ selectedProperty.details.condition }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 class="text-xl font-semibold text-gray-900 mb-4">Ausstattung</h3>
+              <div class="space-y-2">
+                <div v-for="feature in selectedProperty.features" :key="feature" class="flex items-center">
+                  <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span class="text-gray-700">{{ feature }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-8">
+            <h3 class="text-xl font-semibold text-gray-900 mb-4">Beschreibung</h3>
+            <p class="text-gray-700 leading-relaxed">{{ selectedProperty.description }}</p>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row gap-4">
+            <button 
+              @click="showContactForm = true"
+              class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Interesse bekunden
+            </button>
+            <a 
+              :href="`tel:${selectedProperty.contact.phone}`"
+              class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium text-center"
+            >
+              Anrufen
+            </a>
+            <a 
+              :href="`mailto:${selectedProperty.contact.email}?subject=Interesse an ${selectedProperty.title}`"
+              class="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium text-center"
+            >
+              E-Mail senden
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Company Detail Modal -->
+    <div 
+      v-if="selectedCompany" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      @click="closeModal"
+    >
+      <div 
+        class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+        @click.stop
+      >
+        <!-- Image Gallery -->
+        <div class="relative h-80">
+          <div v-if="selectedCompany.images && selectedCompany.images.length > 0" class="relative h-full">
+            <img 
+              :src="selectedCompany.images[currentImageIndex]" 
+              :alt="selectedCompany.name"
+              class="w-full h-full object-cover"
+            />
+            <!-- Navigation arrows -->
+            <button 
+              v-if="selectedCompany.images.length > 1"
+              @click="previousImage"
+              class="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button 
+              v-if="selectedCompany.images.length > 1"
+              @click="nextImage"
+              class="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <!-- Image counter -->
+            <div v-if="selectedCompany.images.length > 1" class="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+              {{ currentImageIndex + 1 }} / {{ selectedCompany.images.length }}
+            </div>
+          </div>
+          <button 
+            @click="closeModal"
+            class="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div class="p-8">
+          <div class="mb-6">
+            <span class="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium mb-3">
+              {{ selectedCompany.industry }}
+            </span>
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ selectedCompany.name }}</h2>
+            <p class="text-gray-600 flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {{ selectedCompany.location }}
+            </p>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div>
+              <h3 class="text-xl font-semibold text-gray-900 mb-4">Unternehmensdaten</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Mitarbeiter:</span>
+                  <span class="font-medium">{{ selectedCompany.employees }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Gegründet:</span>
+                  <span class="font-medium">{{ selectedCompany.founded }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Umsatz:</span>
+                  <span class="font-medium">€{{ selectedCompany.revenue }}</span>
+                </div>
+                <div v-if="selectedCompany.details?.legalForm" class="flex justify-between">
+                  <span class="text-gray-600">Rechtsform:</span>
+                  <span class="font-medium">{{ selectedCompany.details.legalForm }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 class="text-xl font-semibold text-gray-900 mb-4">Highlights</h3>
+              <div class="space-y-2">
+                <div v-for="highlight in selectedCompany.highlights" :key="highlight" class="flex items-center">
+                  <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span class="text-gray-700">{{ highlight }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-8">
+            <h3 class="text-xl font-semibold text-gray-900 mb-4">Beschreibung</h3>
+            <p class="text-gray-700 leading-relaxed">{{ selectedCompany.description }}</p>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row gap-4">
+            <button 
+              @click="showContactForm = true"
+              class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              Interesse bekunden
+            </button>
+            <a 
+              :href="`tel:${selectedCompany.contact.phone}`"
+              class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium text-center"
+            >
+              Anrufen
+            </a>
+            <a 
+              :href="`mailto:${selectedCompany.contact.email}?subject=Interesse an ${selectedCompany.name}`"
+              class="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium text-center"
+            >
+              E-Mail senden
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Form Modal -->
+    <div 
+      v-if="showContactForm" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-60"
+      @click="showContactForm = false"
+    >
+      <div 
+        class="bg-white rounded-lg max-w-md w-full p-6"
+        @click.stop
+      >
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-xl font-semibold text-gray-900">Interesse bekunden</h3>
+          <button 
+            @click="showContactForm = false"
+            class="text-gray-400 hover:text-gray-600"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="submitContactForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+            <input 
+              v-model="contactForm.name"
+              type="text" 
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ihr Name"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail *</label>
+            <input 
+              v-model="contactForm.email"
+              type="email" 
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="ihre.email@beispiel.de"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Telefon</label>
+            <input 
+              v-model="contactForm.phone"
+              type="tel"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ihre Telefonnummer"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Nachricht</label>
+            <textarea 
+              v-model="contactForm.message"
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              :placeholder="`Ich interessiere mich für ${selectedProperty?.title || selectedCompany?.name}`"
+            ></textarea>
+          </div>
+          
+          <div class="flex gap-3">
+            <button 
+              type="button"
+              @click="showContactForm = false"
+              class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button 
+              type="submit"
+              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Senden
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -211,6 +563,17 @@ const error = computed(() => propertiesError.value || companiesError.value)
 
 const selectedCategory = ref('all')
 const searchTerm = ref('')
+const selectedProperty = ref(null)
+const selectedCompany = ref(null)
+const currentImageIndex = ref(0)
+const showContactForm = ref(false)
+
+const contactForm = ref({
+  name: '',
+  email: '',
+  phone: '',
+  message: ''
+})
 
 const filteredProperties = computed(() => {
   if (selectedCategory.value === 'companies') return []
@@ -241,6 +604,81 @@ const filteredCompanies = computed(() => {
 const filteredItems = computed(() => {
   return [...filteredProperties.value, ...filteredCompanies.value]
 })
+
+const openPropertyModal = (property) => {
+  selectedProperty.value = property
+  currentImageIndex.value = 0
+}
+
+const openCompanyModal = (company) => {
+  selectedCompany.value = company
+  currentImageIndex.value = 0
+}
+
+const closeModal = () => {
+  selectedProperty.value = null
+  selectedCompany.value = null
+  showContactForm.value = false
+  currentImageIndex.value = 0
+}
+
+const nextImage = () => {
+  const images = selectedProperty.value?.images || selectedCompany.value?.images || []
+  if (images.length > 1) {
+    currentImageIndex.value = (currentImageIndex.value + 1) % images.length
+  }
+}
+
+const previousImage = () => {
+  const images = selectedProperty.value?.images || selectedCompany.value?.images || []
+  if (images.length > 1) {
+    currentImageIndex.value = currentImageIndex.value === 0 ? images.length - 1 : currentImageIndex.value - 1
+  }
+}
+
+const submitContactForm = () => {
+  const subject = selectedProperty.value 
+    ? `Interesse an ${selectedProperty.value.title}`
+    : `Interesse an ${selectedCompany.value?.name}`
+  
+  console.log('Contact form submitted:', {
+    ...contactForm.value,
+    subject,
+    item: selectedProperty.value || selectedCompany.value
+  })
+  
+  alert('Vielen Dank für Ihr Interesse! Wir melden uns bald bei Ihnen.')
+  
+  // Reset form
+  contactForm.value = {
+    name: '',
+    email: '',
+    phone: '',
+    message: ''
+  }
+  showContactForm.value = false
+}
+
+// Keyboard navigation
+onMounted(() => {
+  const handleKeydown = (event) => {
+    if (selectedProperty.value || selectedCompany.value) {
+      if (event.key === 'Escape') {
+        closeModal()
+      } else if (event.key === 'ArrowLeft') {
+        previousImage()
+      } else if (event.key === 'ArrowRight') {
+        nextImage()
+      }
+    }
+  }
+  
+  document.addEventListener('keydown', handleKeydown)
+  
+  return () => {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
 </script>
 
 <style scoped>
@@ -249,5 +687,9 @@ const filteredItems = computed(() => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.z-60 {
+  z-index: 60;
 }
 </style>
